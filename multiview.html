@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multiview 控制台</title>
+<style>
+:root{
+  --panel:#16181d;
+  --raise:#1f232b;
+  --raise2:#262b35;
+  --edge:#333a47;
+  --ink:#d6dbe3;
+  --ink-dim:#7c8798;
+  --amber:#f2a33c;
+  --amber-dim:#7a5520;
+  --tally-on:#ff3b30;
+  --tally-live:#33d17a;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, "Noto Sans Mono CJK TC", monospace;
+  --sans: -apple-system, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--panel); color:var(--ink);
+  font-family:var(--sans); font-size:13px;
+  display:grid; grid-template-columns:300px 1fr; grid-template-rows:48px 1fr;
+  grid-template-areas:"brand top" "side main";
+}
+
+/* ---------- 機箱面板質感 ---------- */
+.brand{
+  grid-area:brand; display:flex; align-items:center; gap:10px; padding:0 16px;
+  background:var(--raise); border-right:1px solid var(--edge); border-bottom:1px solid var(--edge);
+}
+.brand b{font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase; font-weight:600}
+.brand span{font-family:var(--mono); font-size:10px; color:var(--ink-dim); letter-spacing:.1em}
+.lamp{width:8px;height:8px;border-radius:50%;background:#3a4150;box-shadow:inset 0 0 0 1px #0006}
+.lamp.on{background:var(--tally-on); box-shadow:0 0 10px var(--tally-on)}
+
+.topbar{
+  grid-area:top; display:flex; align-items:center; gap:6px; padding:0 12px;
+  background:var(--raise); border-bottom:1px solid var(--edge); overflow-x:auto;
+}
+.topbar .sep{width:1px;height:26px;background:var(--edge);margin:0 6px;flex:none}
+.spacer{flex:1}
+
+.side{grid-area:side; background:var(--raise); border-right:1px solid var(--edge); overflow-y:auto; padding:14px}
+.main{grid-area:main; display:flex; flex-direction:column; min-width:0; min-height:0}
+
+/* ---------- 元件 ---------- */
+.lbl{
+  font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--ink-dim); display:block; margin:16px 0 7px;
+}
+.lbl:first-child{margin-top:0}
+input,select{
+  width:100%; background:#0e1014; color:var(--ink); border:1px solid var(--edge);
+  border-radius:3px; padding:7px 9px; font-family:var(--mono); font-size:12px;
+}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--amber); outline-offset:1px}
+.row{display:flex; gap:6px}
+.row>*{min-width:0}
+
+button{
+  background:var(--raise2); color:var(--ink); border:1px solid var(--edge);
+  border-radius:3px; padding:7px 11px; cursor:pointer;
+  font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  border-top-color:#3d4552; box-shadow:0 1px 0 #0008;
+}
+button:hover{background:#2f3542}
+button:active{transform:translateY(1px); box-shadow:none}
+button.primary{background:var(--amber-dim); border-color:#a5741f; color:#ffe9c9}
+button.primary:hover{background:#95661f}
+button.danger{background:#5a1f1c; border-color:#8a3630; color:#ffd9d6}
+button.danger:hover{background:#6d2723}
+button[disabled]{opacity:.4; cursor:not-allowed}
+
+/* 版面選擇 = 硬體按鍵 */
+.layouts{display:grid; grid-template-columns:repeat(4,1fr); gap:6px}
+.lbtn{
+  aspect-ratio:16/10; background:#0e1014; border:1px solid var(--edge); border-radius:3px;
+  padding:0; display:grid; place-items:center; cursor:pointer;
+}
+.lbtn:hover{border-color:#4b5566}
+.lbtn[aria-pressed="true"]{border-color:var(--amber); background:#231a0d; box-shadow:0 0 0 1px var(--amber) inset}
+.lbtn svg{width:78%; height:78%}
+.lbtn rect{fill:#2b323d; stroke:#4a5464; stroke-width:1.5}
+.lbtn[aria-pressed="true"] rect{fill:#4a3512; stroke:var(--amber)}
+
+/* 訊號源清單 */
+.src{
+  display:flex; align-items:center; gap:9px; padding:8px 9px; margin-bottom:5px;
+  background:#0e1014; border:1px solid var(--edge); border-left:3px solid #3a4150; border-radius:3px;
+}
+.src.live{border-left-color:var(--tally-live)}
+.src.err{border-left-color:var(--tally-on)}
+.src.onair{border-left-color:var(--tally-on); background:#1a0f0e}
+.src .nm{flex:1; font-family:var(--mono); font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.src .st{font-family:var(--mono); font-size:9px; letter-spacing:.1em; color:var(--ink-dim); text-transform:uppercase}
+.src .x{background:none;border:none;box-shadow:none;color:var(--ink-dim);padding:2px 4px;font-size:13px}
+.src .x:hover{color:var(--tally-on);background:none}
+.empty{color:var(--ink-dim); font-size:12px; line-height:1.6; padding:10px; border:1px dashed var(--edge); border-radius:3px}
+
+/* 節目輸出區 */
+.stage{flex:1; display:grid; place-items:center; padding:18px; min-height:0; background:#0b0c0f}
+.frame{position:relative; max-width:100%; max-height:100%; border:2px solid #2a303b; border-radius:2px; transition:border-color .15s}
+.frame.onair{border-color:var(--tally-on); box-shadow:0 0 0 1px #ff3b3055, 0 0 24px #ff3b3033}
+canvas{display:block; max-width:100%; max-height:calc(100vh - 190px); background:#000}
+.hit{position:absolute; inset:0}
+.slot{
+  position:absolute; border:1px dashed transparent; cursor:pointer;
+  display:grid; place-items:center; color:transparent;
+  font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+}
+.slot:hover{border-color:var(--amber); background:#f2a33c1a; color:var(--amber)}
+
+.statusbar{
+  height:30px; flex:none; display:flex; align-items:center; gap:14px; padding:0 14px;
+  background:var(--raise); border-top:1px solid var(--edge);
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; color:var(--ink-dim);
+}
+.statusbar b{color:var(--ink); font-weight:500}
+
+.log{
+  height:0; overflow:auto; background:#0b0c0f; border-top:1px solid var(--edge);
+  font-family:var(--mono); font-size:10.5px; line-height:1.65; color:var(--ink-dim);
+  padding:0 14px; transition:height .15s;
+}
+.log.open{height:150px; padding:10px 14px}
+.log .e{color:#ff8177}
+
+/* 指派選單 */
+dialog{
+  background:var(--raise); color:var(--ink); border:1px solid var(--edge);
+  border-radius:4px; padding:14px; min-width:260px; box-shadow:0 20px 60px #000b;
+}
+dialog::backdrop{background:#000a}
+dialog button{width:100%; text-align:left; margin-bottom:5px; text-transform:none; letter-spacing:0; font-size:12px}
+.chk{display:flex; align-items:center; gap:7px; margin:7px 0; font-family:var(--mono); font-size:11px; color:var(--ink-dim); cursor:pointer}
+.chk input{width:auto}
+video{display:none}
+
+@media (max-width:900px){
+  body{grid-template-columns:1fr; grid-template-rows:48px auto 1fr; grid-template-areas:"brand" "top" "main"}
+  .side{grid-area:auto; display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="brand">
+  <span class="lamp" id="lamp"></span>
+  <b>Multiview</b><span id="clock">--:--:--</span>
+</div>
+
+<div class="topbar">
+  <button id="btnAddAll" title="從 MediaMTX 讀取目前所有串流路徑">掃描串流</button>
+  <span class="sep"></span>
+  <select id="selRes" style="width:130px">
+    <option value="1920x1080">輸出 1920×1080</option>
+    <option value="1280x720">輸出 1280×720</option>
+    <option value="2560x1440">輸出 2560×1440</option>
+  </select>
+  <select id="selFit" style="width:110px">
+    <option value="contain">留黑邊</option>
+    <option value="cover">裁切填滿</option>
+  </select>
+  <select id="selAudio" style="width:150px"><option value="">無聲音</option></select>
+  <span class="sep"></span>
+  <button id="btnLog">紀錄</button>
+  <div class="spacer"></div>
+  <button id="btnAir" class="primary">開始廣播</button>
+</div>
+
+<aside class="side">
+  <span class="lbl">版面</span>
+  <div class="layouts" id="layouts"></div>
+
+  <span class="lbl">新增訊號源</span>
+  <input id="inBase" value="" placeholder="http://192.168.1.10:8889">
+  <div class="row" style="margin-top:6px">
+    <input id="inPath" placeholder="cam1">
+    <button id="btnAdd" style="flex:none">加入</button>
+  </div>
+
+  <span class="lbl">訊號源</span>
+  <div id="srcList"></div>
+
+  <span class="lbl">畫面疊加</span>
+  <label class="chk"><input type="checkbox" id="ckName" checked> 顯示攝影機名稱</label>
+  <label class="chk"><input type="checkbox" id="ckTime" checked> 顯示時間碼</label>
+  <label class="chk"><input type="checkbox" id="ckGrid" checked> 顯示分割線</label>
+</aside>
+
+<main class="main">
+  <div class="stage">
+    <div class="frame" id="frame">
+      <canvas id="cv" width="1920" height="1080"></canvas>
+      <div class="hit" id="hit"></div>
+    </div>
+  </div>
+  <div class="statusbar">
+    <span>版面 <b id="stLayout">四分割</b></span>
+    <span>連線 <b id="stConn">0</b></span>
+    <span>輸出 <b id="stRes">1920×1080</b></span>
+    <span>合成 <b id="stFps">0</b> fps</span>
+    <span>狀態 <b id="stAir">待機</b></span>
+  </div>
+  <div class="log" id="log"></div>
+</main>
+
+<dialog id="dlg"><div id="dlgBody"></div></dialog>
+
+<div id="pool"></div>
+
+<script>
+"use strict";
+
+/* ============ 版面定義：[x, y, w, h]，皆為 0~1 比例 ============ */
+const LAYOUTS = {
+  full:   {name:"單畫面", rects:[[0,0,1,1]]},
+  h2:     {name:"左右二分", rects:[[0,0,.5,1],[.5,0,.5,1]]},
+  v2:     {name:"上下二分", rects:[[0,0,1,.5],[0,.5,1,.5]]},
+  pip:    {name:"子母畫面", rects:[[0,0,1,1],[.71,.71,.27,.27]]},
+  l3:     {name:"一大二小", rects:[[0,0,2/3,1],[2/3,0,1/3,.5],[2/3,.5,1/3,.5]]},
+  t3:     {name:"上一下二", rects:[[0,0,1,.6],[0,.6,.5,.4],[.5,.6,.5,.4]]},
+  quad:   {name:"四分割",   rects:[[0,0,.5,.5],[.5,0,.5,.5],[0,.5,.5,.5],[.5,.5,.5,.5]]},
+  l5:     {name:"一大七小", rects:[[0,0,.75,.75],[.75,0,.25,.25],[.75,.25,.25,.25],[.75,.5,.25,.25],[.75,.75,.25,.25],[.5,.75,.25,.25],[.25,.75,.25,.25],[0,.75,.25,.25]]},
+  six:    {name:"一大五小", rects:[[0,0,2/3,2/3],[2/3,0,1/3,1/3],[2/3,1/3,1/3,1/3],[0,2/3,1/3,1/3],[1/3,2/3,1/3,1/3],[2/3,2/3,1/3,1/3]]},
+  g6:     {name:"3×2",     rects:grid(3,2)},
+  nine:   {name:"九分割",   rects:grid(3,3)},
+  g16:    {name:"十六分割", rects:grid(4,4)},
+};
+function grid(c,r){const o=[];for(let y=0;y<r;y++)for(let x=0;x<c;x++)o.push([x/c,y/r,1/c,1/r]);return o;}
+
+/* ============ 狀態 ============ */
+const S = {
+  sources: [],           // {id,name,url,stream,video,pc,status}
+  layout: "quad",
+  slots: {},             // layoutKey -> [srcId|null,...]
+  fit: "contain",
+  audioId: "",
+  onair: false,
+  fps: 0,
+};
+let seq = 0;
+
+const $ = s => document.querySelector(s);
+const cv = $("#cv"), ctx = cv.getContext("2d", {alpha:false});
+
+/* ============ 紀錄 ============ */
+function log(msg, err){
+  const d = document.createElement("div");
+  if(err) d.className = "e";
+  d.textContent = new Date().toLocaleTimeString("zh-TW",{hour12:false}) + "  " + msg;
+  $("#log").appendChild(d);
+  $("#log").scrollTop = 1e9;
+}
+
+/* ============ 版面按鈕 ============ */
+function renderLayouts(){
+  const box = $("#layouts"); box.innerHTML = "";
+  for(const [k,L] of Object.entries(LAYOUTS)){
+    const b = document.createElement("button");
+    b.className = "lbtn"; b.title = L.name;
+    b.setAttribute("aria-pressed", String(k===S.layout));
+    b.innerHTML = `<svg viewBox="0 0 100 62">` +
+      L.rects.map(([x,y,w,h])=>`<rect x="${(x*100+1).toFixed(1)}" y="${(y*62+1).toFixed(1)}" width="${(w*100-2).toFixed(1)}" height="${(h*62-2).toFixed(1)}" rx="1"/>`).join("") +
+      `</svg>`;
+    b.onclick = () => { S.layout = k; renderLayouts(); renderSlots(); $("#stLayout").textContent = L.name; };
+    box.appendChild(b);
+  }
+}
+function slotArr(){
+  const n = LAYOUTS[S.layout].rects.length;
+  if(!S.slots[S.layout]) S.slots[S.layout] = new Array(n).fill(null);
+  const a = S.slots[S.layout];
+  while(a.length < n) a.push(null);
+  return a;
+}
+
+/* ============ 點擊指派 ============ */
+function renderSlots(){
+  const hit = $("#hit"); hit.innerHTML = "";
+  LAYOUTS[S.layout].rects.forEach(([x,y,w,h], i)=>{
+    const d = document.createElement("div");
+    d.className = "slot";
+    d.style.cssText = `left:${x*100}%;top:${y*100}%;width:${w*100}%;height:${h*100}%`;
+    d.textContent = "指派 " + (i+1);
+    d.onclick = () => pick(i);
+    hit.appendChild(d);
+  });
+}
+function pick(i){
+  const body = $("#dlgBody"); body.innerHTML = "";
+  const title = document.createElement("div");
+  title.className = "lbl"; title.style.marginTop = "0";
+  title.textContent = `畫面 ${i+1} 播出`;
+  body.appendChild(title);
+
+  const mk = (label, val) => {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.onclick = () => { slotArr()[i] = val; $("#dlg").close(); renderSources(); };
+    body.appendChild(b);
+  };
+  if(!S.sources.length){
+    const p = document.createElement("div");
+    p.className = "empty"; p.textContent = "還沒有訊號源。先在左側加入攝影機。";
+    body.appendChild(p);
+  }
+  S.sources.forEach(s => mk(s.name, s.id));
+  mk("— 清空這格 —", null);
+  $("#dlg").showModal();
+}
+
+/* ============ 訊號源 ============ */
+function renderSources(){
+  const box = $("#srcList"); box.innerHTML = "";
+  const used = new Set(slotArr().filter(Boolean));
+  if(!S.sources.length){
+    box.innerHTML = `<div class="empty">尚未加入訊號源。<br>填入 MediaMTX 位址與路徑名稱後按「加入」,或按上方「掃描串流」。</div>`;
+  }
+  S.sources.forEach(s=>{
+    const d = document.createElement("div");
+    d.className = "src " + (s.status==="live" ? (used.has(s.id) && S.onair ? "onair" : "live") : s.status==="error" ? "err" : "");
+    d.innerHTML = `<span class="nm"></span><span class="st"></span><button class="x" title="移除">✕</button>`;
+    d.querySelector(".nm").textContent = s.name;
+    d.querySelector(".st").textContent =
+      s.status==="live" ? (used.has(s.id) ? "ON AIR" : "READY") :
+      s.status==="error" ? "FAIL" : "…";
+    d.querySelector(".x").onclick = () => removeSource(s.id);
+    box.appendChild(d);
+  });
+  $("#stConn").textContent = S.sources.filter(s=>s.status==="live").length + " / " + S.sources.length;
+  // 音訊來源下拉
+  const sel = $("#selAudio"), cur = sel.value;
+  sel.innerHTML = `<option value="">無聲音</option>` +
+    S.sources.map(s=>`<option value="${s.id}"></option>`).join("");
+  [...sel.options].forEach((o,idx)=>{ if(idx>0) o.textContent = "聲音：" + S.sources[idx-1].name; });
+  sel.value = cur; S.audioId = sel.value;
+}
+
+function addSource(name, url){
+  const s = {id:"s"+(++seq), name, url, status:"connecting", stream:null, pc:null};
+  const v = document.createElement("video");
+  v.muted = true; v.autoplay = true; v.playsInline = true;
+  $("#pool").appendChild(v);
+  s.video = v;
+  S.sources.push(s);
+  renderSources();
+  connect(s);
+  return s;
+}
+function removeSource(id){
+  const i = S.sources.findIndex(s=>s.id===id); if(i<0) return;
+  const s = S.sources[i];
+  try{ s.pc && s.pc.close(); }catch(e){}
+  s.video.remove();
+  S.sources.splice(i,1);
+  for(const k in S.slots) S.slots[k] = S.slots[k].map(v => v===id ? null : v);
+  renderSources();
+}
+
+/* WHEP：向 MediaMTX 要一路 WebRTC */
+async function connect(s){
+  try{
+    const pc = new RTCPeerConnection({iceServers:[]});
+    s.pc = pc;
+    pc.addTransceiver("video", {direction:"recvonly"});
+    pc.addTransceiver("audio", {direction:"recvonly"});
+    const ms = new MediaStream();
+    pc.ontrack = e => { ms.addTrack(e.track); s.video.srcObject = ms; s.video.play().catch(()=>{}); };
+    pc.onconnectionstatechange = () => {
+      if(pc.connectionState==="connected"){ s.status="live"; log(`${s.name} 已連線`); }
+      if(["failed","disconnected","closed"].includes(pc.connectionState)){ s.status="error"; log(`${s.name} 連線中斷 (${pc.connectionState})`, true); }
+      renderSources();
+    };
+    s.stream = ms;
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await new Promise(r => {
+      if(pc.iceGatheringState==="complete") return r();
+      const t = setTimeout(r, 1500);
+      pc.addEventListener("icegatheringstatechange", ()=>{ if(pc.iceGatheringState==="complete"){clearTimeout(t); r();} });
+    });
+
+    const res = await fetch(s.url, {
+      method:"POST",
+      headers:{"Content-Type":"application/sdp"},
+      body: pc.localDescription.sdp
+    });
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    await pc.setRemoteDescription({type:"answer", sdp: await res.text()});
+  }catch(e){
+    s.status = "error"; renderSources();
+    log(`${s.name} 連線失敗：${e.message}`, true);
+  }
+}
+
+/* ============ 合成迴圈 ============ */
+let frames = 0, lastT = performance.now();
+function drawFit(v, x, y, w, h){
+  const vw = v.videoWidth, vh = v.videoHeight;
+  if(!vw || !vh) return false;
+  const sr = vw/vh, dr = w/h;
+  let dw, dh;
+  if(S.fit === "cover"){
+    if(sr > dr){ dh = h; dw = h*sr; } else { dw = w; dh = w/sr; }
+  }else{
+    if(sr > dr){ dw = w; dh = w/sr; } else { dh = h; dw = h*sr; }
+  }
+  ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+  ctx.drawImage(v, x + (w-dw)/2, y + (h-dh)/2, dw, dh);
+  ctx.restore();
+  return true;
+}
+
+function render(){
+  const W = cv.width, H = cv.height;
+  ctx.fillStyle = "#000"; ctx.fillRect(0,0,W,H);
+
+  const rects = LAYOUTS[S.layout].rects, slots = slotArr();
+  const unit = Math.min(W,H) / 40;
+
+  rects.forEach(([rx,ry,rw,rh], i)=>{
+    const x = Math.round(rx*W), y = Math.round(ry*H);
+    const w = Math.round(rw*W), h = Math.round(rh*H);
+    const s = S.sources.find(o => o.id === slots[i]);
+
+    let ok = false;
+    if(s && s.video.readyState >= 2) ok = drawFit(s.video, x, y, w, h);
+
+    if(!ok){
+      ctx.fillStyle = "#0c0d10"; ctx.fillRect(x,y,w,h);
+      ctx.fillStyle = "#3a4150";
+      ctx.font = `500 ${unit*0.9}px ${getComputedStyle(document.body).getPropertyValue('--mono')}`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(s ? "無訊號 " + s.name : "— " + (i+1) + " —", x+w/2, y+h/2);
+    }
+    if($("#ckGrid").checked){
+      ctx.strokeStyle = "#000"; ctx.lineWidth = 2;
+      ctx.strokeRect(x+1, y+1, w-2, h-2);
+    }
+    if(s && $("#ckName").checked){
+      const fs = Math.max(12, unit*0.75);
+      ctx.font = `500 ${fs}px ${getComputedStyle(document.body).getPropertyValue('--mono')}`;
+      const tw = ctx.measureText(s.name).width;
+      ctx.fillStyle = "rgba(0,0,0,.62)";
+      ctx.fillRect(x+8, y+h-fs-16, tw+16, fs+10);
+      ctx.fillStyle = "#e8edf5"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+      ctx.fillText(s.name, x+16, y+h-fs-11);
+    }
+  });
+
+  if($("#ckTime").checked){
+    const fs = Math.max(14, unit);
+    const t = new Date().toLocaleString("zh-TW", {hour12:false});
+    ctx.font = `500 ${fs}px ${getComputedStyle(document.body).getPropertyValue('--mono')}`;
+    ctx.textAlign = "right"; ctx.textBaseline = "top";
+    const tw = ctx.measureText(t).width;
+    ctx.fillStyle = "rgba(0,0,0,.62)"; ctx.fillRect(W-tw-24, 10, tw+16, fs+10);
+    ctx.fillStyle = "#e8edf5"; ctx.fillText(t, W-16, 15);
+  }
+
+  if(S.onair){
+    const fs = Math.max(14, unit);
+    ctx.font = `600 ${fs}px ${getComputedStyle(document.body).getPropertyValue('--mono')}`;
+    ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.fillStyle = "#ff3b30"; ctx.fillRect(14, 10, ctx.measureText("ON AIR").width+18, fs+10);
+    ctx.fillStyle = "#fff"; ctx.fillText("ON AIR", 23, 15);
+  }
+
+  frames++;
+  const now = performance.now();
+  if(now - lastT > 1000){
+    S.fps = Math.round(frames*1000/(now-lastT));
+    $("#stFps").textContent = S.fps;
+    frames = 0; lastT = now;
+  }
+  requestAnimationFrame(render);
+}
+
+/* ============ 廣播輸出 ============ */
+let rec = null, ws = null;
+
+function outputStream(){
+  const st = cv.captureStream(30);
+  const a = S.sources.find(s => s.id === S.audioId);
+  if(a && a.stream){
+    const t = a.stream.getAudioTracks()[0];
+    if(t) st.addTrack(t);
+  }
+  return st;
+}
+
+function startAir(){
+  const proto = location.protocol === "https:" ? "wss://" : "ws://";
+  ws = new WebSocket(proto + location.host + "/publish");
+  ws.binaryType = "arraybuffer";
+
+  ws.onopen = () => {
+    // Chrome / Edge 給 WebM，Safari 只給 MP4，要先告訴伺服器用哪個解封裝器
+    const mime = [
+      "video/webm;codecs=vp8,opus",
+      "video/webm;codecs=vp9,opus",
+      "video/webm",
+      "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+      "video/mp4",
+    ].find(m => MediaRecorder.isTypeSupported(m));
+
+    if(!mime){
+      log("這個瀏覽器無法輸出合成畫面，請改用 Chrome 或 Edge", true);
+      return stopAir();
+    }
+    if(mime.includes("mp4")) log("Safari 的 MP4 輸出相容性較差，建議改用 Chrome");
+    ws.send(JSON.stringify({type:"hello", mime}));
+
+    rec = new MediaRecorder(outputStream(), {mimeType:mime, videoBitsPerSecond: 6_000_000});
+    rec.ondataavailable = e => { if(e.data.size && ws.readyState===1) ws.send(e.data); };
+    rec.start(120);
+    S.onair = true;
+    $("#lamp").classList.add("on");
+    $("#frame").classList.add("onair");
+    $("#btnAir").textContent = "停止廣播";
+    $("#btnAir").className = "danger";
+    $("#stAir").textContent = "廣播中";
+    log("開始廣播,推送至轉播伺服器");
+    renderSources();
+  };
+  ws.onmessage = e => log("伺服器：" + e.data);
+  ws.onerror = () => log("無法連上轉播伺服器,請確認 relay-server 已啟動", true);
+  ws.onclose = () => { if(S.onair) stopAir(); };
+}
+function stopAir(){
+  try{ rec && rec.state !== "inactive" && rec.stop(); }catch(e){}
+  try{ ws && ws.close(); }catch(e){}
+  rec = null; ws = null; S.onair = false;
+  $("#lamp").classList.remove("on");
+  $("#frame").classList.remove("onair");
+  $("#btnAir").textContent = "開始廣播";
+  $("#btnAir").className = "primary";
+  $("#stAir").textContent = "待機";
+  log("已停止廣播");
+  renderSources();
+}
+
+/* ============ 事件 ============ */
+$("#btnAdd").onclick = () => {
+  const base = $("#inBase").value.trim().replace(/\/+$/,"");
+  const p = $("#inPath").value.trim().replace(/^\/+/,"");
+  if(!base || !p) return;
+  addSource(p, `${base}/${p}/whep`);
+  $("#inPath").value = "";
+};
+$("#inPath").addEventListener("keydown", e => { if(e.key==="Enter") $("#btnAdd").click(); });
+
+$("#btnAddAll").onclick = async () => {
+  const base = $("#inBase").value.trim().replace(/\/+$/,"");
+  if(!base) return log("請先填入 MediaMTX 位址", true);
+  const api = base.replace(/:\d+$/, ":9997");
+  try{
+    const r = await fetch(api + "/v3/paths/list");
+    const j = await r.json();
+    let n = 0;
+    (j.items||[]).forEach(it=>{
+      if(it.name === "program") return;                 // 不要把自己的輸出拉回來
+      if(S.sources.some(s=>s.name===it.name)) return;
+      addSource(it.name, `${base}/${it.name}/whep`); n++;
+    });
+    log(n ? `掃描到 ${n} 路新串流` : "沒有找到新的串流");
+  }catch(e){ log("掃描失敗，請確認 MediaMTX API (9997) 已開啟：" + e.message, true); }
+};
+
+$("#selRes").onchange = e => {
+  const [w,h] = e.target.value.split("x").map(Number);
+  cv.width = w; cv.height = h;
+  $("#stRes").textContent = `${w}×${h}`;
+  if(S.onair) log("解析度已變更,建議重新開始廣播以套用", true);
+};
+$("#selFit").onchange = e => S.fit = e.target.value;
+$("#selAudio").onchange = e => S.audioId = e.target.value;
+$("#btnLog").onclick = () => $("#log").classList.toggle("open");
+$("#btnAir").onclick = () => S.onair ? stopAir() : startAir();
+$("#dlg").onclick = e => { if(e.target.id === "dlg") $("#dlg").close(); };
+
+setInterval(()=>{ $("#clock").textContent = new Date().toLocaleTimeString("zh-TW",{hour12:false}); }, 1000);
+
+/* 預設把位址填成目前主機 */
+$("#inBase").value = `${location.protocol}//${location.hostname}:8889`;
+
+renderLayouts(); renderSlots(); renderSources(); render();
+log("控制台就緒");
+</script>
+</body>
+</html>

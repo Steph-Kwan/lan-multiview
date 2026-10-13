@@ -1,0 +1,9 @@
+{
+  "name": "lan-multiview",
+  "version": "1.0.0",
+  "private": true,
+  "description": "內網 RTSP 多路合成與再廣播",
+  "main": "relay-server.js",
+  "scripts": { "start": "node relay-server.js" },
+  "dependencies": { "ws": "^8.18.0" }
+}

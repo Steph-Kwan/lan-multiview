@@ -1,0 +1,8 @@
+node_modules/
+package-lock.json
+
+# 真正在用的設定檔含攝影機帳密，不進版控
+mediamtx.yml
+
+.DS_Store
+*.log

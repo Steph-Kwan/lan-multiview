@@ -1,0 +1,47 @@
+# MediaMTX 設定：負責把 RTSP 攝影機轉成瀏覽器可播的 WebRTC，
+# 並接收合成後的節目訊號再對內網廣播。
+
+logLevel: info
+
+# --- 讀取用的通訊協定 ---
+rtsp: yes
+rtspAddress: :8554
+rtspTransports: [tcp, udp]
+
+hls: yes
+hlsAddress: :8888
+hlsVariant: lowLatency
+hlsAlwaysRemux: yes
+
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+# 內網若有多張網卡，把控制台看得到的那個 IP 填在這裡
+# webrtcAdditionalHosts: [192.168.1.10]
+
+# --- 讓控制台的「掃描串流」可以列出路徑 ---
+api: yes
+apiAddress: :9997
+
+paths:
+  # ===== 攝影機：改成你自己的 RTSP 網址 =====
+  cam1:
+    source: rtsp://admin:password@192.168.1.101:554/Streaming/Channels/101
+    sourceProtocol: tcp
+    sourceOnDemand: no          # no = 一開機就連，切版面不會有延遲
+  cam2:
+    source: rtsp://admin:password@192.168.1.102:554/Streaming/Channels/101
+    sourceProtocol: tcp
+    sourceOnDemand: no
+  cam3:
+    source: rtsp://admin:password@192.168.1.103:554/Streaming/Channels/101
+    sourceProtocol: tcp
+    sourceOnDemand: no
+  cam4:
+    source: rtsp://admin:password@192.168.1.104:554/Streaming/Channels/101
+    sourceProtocol: tcp
+    sourceOnDemand: no
+
+  # ===== 合成後的節目輸出，由 relay-server 推進來 =====
+  program:
+    source: publisher
