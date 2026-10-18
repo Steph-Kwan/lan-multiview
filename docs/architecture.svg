@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 430" width="1000" height="430" role="img" aria-label="訊號流程：IP 攝影機經 MediaMTX 轉為 WebRTC，由瀏覽器控制台合成版面，再經 relay-server 以 ffmpeg 轉成 H.264 推回 MediaMTX，最後對內網廣播">
+  <defs>
+    <style>
+      .t   { font-family: -apple-system, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+      .m   { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+      .ttl { fill: #dfe4ec; font-size: 17px; font-weight: 600; }
+      .sub { fill: #8c97a8; font-size: 12.5px; }
+      .lab { fill: #9aa5b5; font-size: 12px; letter-spacing: .08em; }
+      .amb { fill: #c99a5c; }
+    </style>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5d6a7d"/>
+    </marker>
+    <marker id="aw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#f2a33c"/>
+    </marker>
+  </defs>
+
+  <rect width="1000" height="430" rx="6" fill="#14161a"/>
+
+  <!-- 第一列：攝影機 → MediaMTX → 控制台 -->
+  <g class="t">
+    <rect x="40" y="56" width="246" height="92" rx="5" fill="#1f232b" stroke="#333a47"/>
+    <text x="64" y="94" class="ttl">IP 攝影機 ×N</text>
+    <text x="64" y="119" class="sub m">rtsp://…:554</text>
+    <text x="64" y="137" class="sub">海康 · 大華 · ONVIF</text>
+
+    <rect x="377" y="56" width="246" height="92" rx="5" fill="#1f232b" stroke="#333a47"/>
+    <text x="401" y="94" class="ttl">MediaMTX</text>
+    <text x="401" y="119" class="sub">把 RTSP 轉成瀏覽器</text>
+    <text x="401" y="137" class="sub">播得動的 WebRTC</text>
+
+    <rect x="714" y="56" width="246" height="92" rx="5" fill="#231a0d" stroke="#f2a33c"/>
+    <text x="738" y="94" class="ttl" fill="#f6c98a">瀏覽器控制台</text>
+    <text x="738" y="119" class="sub m amb">multiview.html</text>
+    <text x="738" y="137" class="sub amb">Canvas 合成版面</text>
+  </g>
+
+  <!-- 第二列（由右往左）：relay-server → program → 觀眾 -->
+  <g class="t">
+    <rect x="714" y="268" width="246" height="92" rx="5" fill="#1f232b" stroke="#333a47"/>
+    <text x="738" y="306" class="ttl">relay-server</text>
+    <text x="738" y="331" class="sub m">ffmpeg → H.264</text>
+    <text x="738" y="349" class="sub">VideoToolbox 硬體編碼</text>
+
+    <rect x="377" y="268" width="246" height="92" rx="5" fill="#1f232b" stroke="#333a47"/>
+    <text x="401" y="306" class="ttl">MediaMTX</text>
+    <text x="401" y="331" class="sub m">/program</text>
+    <text x="401" y="349" class="sub">合成後的節目訊號</text>
+
+    <rect x="40" y="268" width="246" height="92" rx="5" fill="#1f232b" stroke="#333a47"/>
+    <text x="64" y="306" class="ttl">內網觀眾</text>
+    <text x="64" y="331" class="sub m">RTSP · WebRTC · HLS</text>
+    <text x="64" y="349" class="sub">VLC · 瀏覽器 · 手機 · Apple TV</text>
+  </g>
+
+  <!-- 箭頭 -->
+  <g fill="none" stroke="#5d6a7d" stroke-width="1.6">
+    <path d="M286 102 H367" marker-end="url(#a)"/>
+    <path d="M704 314 H633" marker-end="url(#a)"/>
+    <path d="M367 314 H296" marker-end="url(#a)"/>
+  </g>
+  <g fill="none" stroke="#f2a33c" stroke-width="1.6">
+    <path d="M623 102 H704" marker-end="url(#aw)"/>
+    <path d="M837 148 V258" marker-end="url(#aw)"/>
+  </g>
+
+  <g class="m">
+    <text x="326" y="92" class="lab" text-anchor="middle">RTSP</text>
+    <text x="663" y="92" class="lab amb" text-anchor="middle">WebRTC</text>
+    <text x="851" y="208" class="lab amb">WebSocket</text>
+    <text x="668" y="304" class="lab" text-anchor="middle">RTSP</text>
+    <text x="331" y="304" class="lab" text-anchor="middle">播出</text>
+  </g>
+
+  <text x="40" y="402" class="t sub">合成在開控制台的那台電腦上完成。三個元件可以跑在同一台機器，全程不需對外網路。</text>
+</svg>
